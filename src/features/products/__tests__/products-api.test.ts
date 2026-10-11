@@ -35,9 +35,38 @@ describe('API de productos (ejemplo)', () => {
  * POST con datos inválidos → 400 con `details`, y GET de un id inexistente → 404.
  */
 describe('POST /api/products', () => {
-  it.todo('responde 400 con { error, details } cuando los datos no validan');
+  it('responde 400 con { error, details } cuando los datos no validan', async () => {
+    const response = await fetch(`${baseUrl}/api/products`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: '',
+        price: 0,
+        category: 'Otra',
+        stock: -1,
+      }),
+    });
+
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('Datos inválidos');
+    expect(Array.isArray(body.details)).toBe(true);
+    expect(body.details.length).toBeGreaterThanOrEqual(4);
+  });
 });
 
 describe('GET /api/products/:id', () => {
-  it.todo('responde 404 cuando el producto no existe');
+  it('responde 404 cuando el producto no existe', async () => {
+    const response = await fetch(`${baseUrl}/api/products/9999`);
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      error: 'Producto no encontrado',
+      details: ['No existe un producto con id 9999'],
+    });
+  });
 });
