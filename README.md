@@ -27,9 +27,9 @@ npm run build      # revisión de tipos y compilación para producción
 
 La app y la API se ejecutan al mismo tiempo, cada una en su terminal. La app lee la dirección de la API de la variable `VITE_API_URL`: copie `.env.example` como `.env` si necesita cambiarla. El archivo `.env` está ignorado por Git; nunca se versiona.
 
-Rutas de la app, ya creadas como pantallas esqueleto: `/productos` (lista), `/productos/nuevo`, `/productos/:id` (detalle) y `/productos/:id/editar`.
+Rutas de la app: `/productos` (lista), `/productos/nuevo`, `/productos/:id` (detalle) y `/productos/:id/editar`.
 
-Hoy la API responde `501 Not implemented` en cada ruta de `/api/products`, y las pantallas muestran un `TODO`. Construir esa funcionalidad es el trabajo del parcial.
+La API implementa el CRUD completo de `/api/products`, incluyendo filtros, validación y manejo uniforme de errores. La aplicación Ionic consume estos endpoints y permite listar, buscar, filtrar, crear, consultar, editar y eliminar productos.
 
 ## Flujo de entrega
 
@@ -38,7 +38,7 @@ Hoy la API responde `501 Not implemented` en cada ruta de `/api/products`, y las
 3. Trabaje la lista de [TODO.md](./TODO.md), en orden, con commits pequeños en formato [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): resumen` (por ejemplo, `docs(productos): describe la funcionalidad` o `feat(api): agrega el endpoint de lista`).
 4. Los documentos de `docs/` van **antes** que el código: el primer commit de código debe ser posterior al commit de documentación.
 5. Abra un **Pull Request hacia el `main` de su propio fork** (no hacia el repositorio original), con una descripción de lo hecho y el checklist de `docs/definition-of-done.md` marcado.
-6. Pegue el **enlace del PR** en la actividad de Moodle (texto en línea) antes del cierre: sábado 10 de octubre de 2026, 11:59 p. m.
+6. Pegue el **enlace del PR** en la actividad de Moodle (texto en línea) antes del cierre: antes del cierre: lunes 12 de octubre de 2026, 11:59 p. m.
 
 ## Qué se evalúa (5,0)
 
@@ -75,14 +75,14 @@ docs/                         plantillas del framework (se copian y se llenan)
   features/ screens/ decisions/ api/ definition-of-done.md
 kotlin/Product.kt             ejercicio Kotlin (esqueleto)
 server/
-  app.js                      createApp(): rutas de la API (stubs 501) + piezas ya dadas
+ app.js                      createApp(): CRUD de productos, filtros, validación y piezas ya dadas
   index.js                    arranque en el puerto 3000
   data/products.json          8 productos semilla
 src/app/                      arranque, rutas y tema
 src/features/products/        funcionalidad organizada por capas del framework
   data/                       config.ts (API_URL), api-error.ts (ApiError), products-api.ts (cliente fetch)
   domain/product.ts           tipos, formatCOP (dado), validateProduct, toProductView, filterProducts
-  presentation/               páginas, EmptyState (dado, modelo de props tipadas) y ProductCard
+  presentation/               lista, detalle, formulario, EmptyState y ProductCard con props tipadas
   __tests__/                  test-server.ts (helper dado), pruebas de ejemplo y espacio para las suyas
 ```
 
@@ -98,10 +98,13 @@ Para concentrar el parcial en lo trabajado en clase, algunas piezas vienen hecha
 - **Presentación:** `EmptyState` como modelo de componente con props tipadas; el esqueleto de la lista (carga con `useEffect` e `IonItem`/`IonLabel`) y el campo `IonInput` del formulario.
 - **Pruebas:** el helper `startTestServer()` y un ejemplo de prueba de la API.
 
-## Entrega: secciones de este README
+## State management decision
 
-Al terminar, agregue aquí abajo las dos secciones escritas en inglés (3 a 5 frases cada una) que indica la Parte 7 de [TODO.md](./TODO.md): **State management decision** y **API error handling**. También actualice este README con cualquier paso adicional necesario para ejecutar su versión.
+The product pages use local state with React `useState` and `useEffect`. This approach keeps each screen responsible for its own loading, error, filters, form values and validation state. A global state library is not necessary because the product catalog is small and data can be refreshed from the REST API when needed. This solution keeps the application simple and follows the architecture defined for the assignment.
 
+## API error handling
+
+The API returns errors with a consistent `{ error, details }` structure and the appropriate HTTP status code. The client uses `ApiError` to distinguish network failures from API responses such as 400, 404 and 500. Validation messages returned in `details` are displayed to the user when the server rejects a product form. Network and loading errors are also shown in the interface so the user can understand what happened and retry when appropriate.
 ---
 
 Las plantillas de `docs/` provienen del Mobile Governance Framework (licencia MIT; ver `docs/LICENSE-mobile-governance-framework.txt`).
