@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import seedProducts from '../../../../server/data/products.json';
-import { CATEGORIES, formatCOP, LOW_STOCK_THRESHOLD } from '../domain/product';
+import {
+  CATEGORIES,
+  filterProducts,
+  formatCOP,
+  LOW_STOCK_THRESHOLD,
+  toProductView,
+  validateProduct,
+} from '../domain/product';;
 
 /**
  * Pruebas unitarias de EJEMPLO (ya vienen dadas) para que `npm test` corra desde el inicio.
@@ -40,13 +47,66 @@ describe('formatCOP (ejemplo)', () => {
  * Quite el `.todo` cuando escriba el cuerpo de cada una.
  */
 describe('validateProduct', () => {
-  it.todo('rechaza un nombre vacío, un precio menor o igual que 0 y una categoría no permitida');
+  it('rechaza un nombre vacío, un precio menor o igual que 0 y una categoría no permitida', () => {
+    const result = validateProduct({
+      name: '   ',
+      price: 0,
+      category: 'Otra',
+      stock: -1,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.name).toBeDefined();
+    expect(result.errors.price).toBeDefined();
+    expect(result.errors.category).toBeDefined();
+    expect(result.errors.stock).toBeDefined();
+  });
 });
 
 describe('toProductView', () => {
-  it.todo('formatea el precio en pesos y marca «Agotado» y «Pocas unidades»');
+  it('formatea el precio en pesos y marca «Agotado» y «Pocas unidades»', () => {
+    const outOfStock = toProductView({
+      id: 1,
+      name: '  Producto agotado  ',
+      price: 1250000,
+      category: 'Hogar',
+      stock: 0,
+    });
+
+    const lowStock = toProductView({
+      id: 2,
+      name: 'Producto con poco stock',
+      price: 8500,
+      category: 'Bebidas',
+      stock: 3,
+    });
+
+    expect(outOfStock.name).toBe('Producto agotado');
+    expect(outOfStock.priceLabel).toBe('$ 1.250.000');
+    expect(outOfStock.stockLabel).toBe('Agotado');
+    expect(outOfStock.isOutOfStock).toBe(true);
+
+    expect(lowStock.priceLabel).toBe('$ 8.500');
+    expect(lowStock.stockLabel).toBe('Pocas unidades');
+    expect(lowStock.isLowStock).toBe(true);
+  });
 });
 
 describe('filterProducts', () => {
-  it.todo('filtra por texto sin distinguir mayúsculas y por categoría exacta');
+  it('filtra por texto sin distinguir mayúsculas y por categoría exacta', () => {
+    const bySearch = filterProducts(seedProducts, {
+      search: 'GASEOSA',
+      category: '',
+    });
+
+    expect(bySearch).toHaveLength(1);
+    expect(bySearch[0].id).toBe(3);
+
+    const byCategory = filterProducts(seedProducts, {
+      search: '',
+      category: 'Snacks',
+    });
+
+    expect(byCategory.map((product) => product.id)).toEqual([4, 5]);
+  });
 });
