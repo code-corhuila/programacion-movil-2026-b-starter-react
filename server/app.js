@@ -1,92 +1,206 @@
-/**
- * API de productos (Express).
- *
- * `createApp()` construye y devuelve la aplicación SIN ponerla a escuchar:
- *  - `server/index.js` la pone a escuchar en el puerto 3000 (`npm run server`);
- *  - las pruebas la levantan con `app.listen(0)` (puerto libre) y llaman con `fetch`
- *    (ver el helper `startTestServer()` en src/features/products/__tests__/test-server.ts).
- *
- * Contrato (el detalle se documenta en docs/api/products-endpoints.md, Parte 1):
- *   GET    /api/products?search=&category=   200 + arreglo
- *   GET    /api/products/:id                 200 | 400 | 404
- *   POST   /api/products                     201 | 400
- *   PUT    /api/products/:id                 200 | 400 | 404
- *   DELETE /api/products/:id                 204 | 400 | 404
- * Formato de error uniforme: { "error": "mensaje", "details": ["..."] }
- *
- * QUÉ YA VIENE HECHO (no se pide escribirlo, pero sí entenderlo y explicarlo en el ADR-002
- * y en la sección «API error handling» del README):
- *   - express.json(): convierte el cuerpo JSON en `req.body`.
- *   - cors(): permite que la app (puerto 5173) llame a la API (puerto 3000).
- *   - parseId(): convierte el parámetro `:id` en número, o devuelve null si no es numérico.
- *   - Manejador 404 (ruta desconocida) y manejador de errores central (500).
- *
- * QUÉ SE ESCRIBE (Parte 2 del TODO.md): las cinco rutas de /api/products. Hoy responden
- * 501 (stub) y deben reemplazarse por la lógica real.
- */
+
 const express = require('express');
 const cors = require('cors');
 const seedProducts = require('./data/products.json');
 
-// Categorías permitidas (la app usa la misma lista).
 const CATEGORIES = ['Bebidas', 'Snacks', 'Aseo', 'Hogar'];
 
-/**
- * YA DADO. Convierte el texto de `:id` en número.
- * Devuelve null si no son solo dígitos ("abc", "1.5", "-2"): la ruta responde 400 en ese caso.
- */
 function parseId(rawId) {
   return /^\d+$/.test(rawId) ? Number(rawId) : null;
 }
 
+function validarProducto(datos) {
+  const detalles = [];
+
+  if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+    return {
+      detalles: ['Debes enviar los datos del producto en formato JSON.']
+    };
+  }
+
+  if (typeof datos.name !== 'string' || datos.name.trim().length === 0) {
+    detalles.push('El nombre es obligatorio.');
+  } else if (datos.name.trim().length > 60) {
+    detalles.push('El nombre no puede superar los 60 caracteres.');
+  }
+
+  if (typeof datos.price !== 'number' || !Number.isFinite(datos.price) || datos.price <= 0) {
+    detalles.push('El precio debe ser un número mayor que cero.');
+  }
+
+  if (typeof datos.category !== 'string' || !CATEGORIES.includes(datos.category)) {
+    detalles.push('La categoría debe ser Bebidas, Snacks, Aseo u Hogar.');
+  }
+
+  if (!Number.isInteger(datos.stock) || datos.stock < 0) {
+    detalles.push('El inventario debe ser un número entero mayor o igual a cero.');
+  }
+
+  return { detalles };
+}
+
 function createApp() {
   const app = express();
+  const products = seedProducts.map((producto) => ({ ...producto }));
+  let siguienteId = Math.max(0, ...products.map((producto) => producto.id)) + 1;
 
-  // YA DADO: CORS para el origen de desarrollo de la app y lectura del cuerpo JSON.
-  app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
+  app.use(cors({
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173']
+  }));
+
   app.use(express.json());
 
-  // Almacenamiento en memoria: copia de la semilla (se reinicia con el servidor).
-  // TODO(Parte 2): úselo en las rutas de abajo y lleve la cuenta del siguiente id.
-  const products = seedProducts.map((item) => ({ ...item }));
-  void products;
-  void CATEGORIES;
-  void parseId;
+  app.get('/api/products', (req, res) => {
+    const busqueda = typeof req.query.search === 'string'
+      ? req.query.search.trim().toLowerCase()
+      : '';
 
-  const notImplemented = (_req, res) => {
-    res.status(501).json({ error: 'Not implemented' });
-  };
+    const categoria = typeof req.query.category === 'string'
+      ? req.query.category
+      : '';
 
-  // TODO(Parte 2): GET /api/products con filtros. Los parámetros llegan en `req.query`:
-  //   const { search, category } = req.query;
-  //   `search`: el nombre contiene el texto, sin distinguir mayúsculas (toLowerCase + includes).
-  //   `category`: igual a la categoría (exacta). Use `.filter` sobre el arreglo.
-  app.get('/api/products', notImplemented);
-  // TODO(Parte 2): GET /api/products/:id → 200 | 400 (parseId devuelve null) | 404 (no existe).
-  app.get('/api/products/:id', notImplemented);
-  // TODO(Parte 2): POST /api/products → 201 con el producto creado | 400 con { error, details[] }.
-  //   Patrón de validación:  const details = [];  if (...) details.push('mensaje');
-  app.post('/api/products', notImplemented);
-  // TODO(Parte 2): PUT /api/products/:id → 200 con el producto actualizado | 400 | 404.
-  app.put('/api/products/:id', notImplemented);
-  // TODO(Parte 2): DELETE /api/products/:id → 204 sin cuerpo (res.status(204).end()) | 400 | 404.
-  app.delete('/api/products/:id', notImplemented);
+    const resultado = products.filter((producto) => {
+      const coincideNombre = producto.name.toLowerCase().includes(busqueda);
+      const coincideCategoria = !categoria || producto.category === categoria;
 
-  // YA DADO: ruta desconocida → 404 con el formato de error uniforme.
-  app.use((req, res) => {
-    res.status(404).json({ error: 'Ruta no encontrada', details: [`${req.method} ${req.originalUrl}`] });
+      return coincideNombre && coincideCategoria;
+    });
+
+    return res.status(200).json(resultado);
   });
 
-  // YA DADO: manejador de errores central (se reconoce por tener CUATRO parámetros).
-  // Express lo ejecuta cuando una ruta lanza una excepción o llama a next(error).
-  // eslint-disable-next-line no-unused-vars -- Express exige los 4 parámetros para reconocerlo.
-  app.use((err, _req, res, _next) => {
-    if (err && err.type === 'entity.parse.failed') {
-      // JSON malformado en el cuerpo: es un error de quien llama, no del servidor.
-      return res.status(400).json({ error: 'El cuerpo no es un JSON válido', details: [] });
+  app.get('/api/products/:id', (req, res) => {
+    const id = parseId(req.params.id);
+
+    if (id === null) {
+      return res.status(400).json({
+        error: 'Identificador inválido.',
+        details: ['El identificador debe contener únicamente números.']
+      });
     }
+
+    const producto = products.find((item) => item.id === id);
+
+    if (!producto) {
+      return res.status(404).json({
+        error: 'Producto no encontrado.',
+        details: [`No existe un producto con el identificador ${id}.`]
+      });
+    }
+
+    return res.status(200).json(producto);
+  });
+
+  app.post('/api/products', (req, res) => {
+    const { detalles } = validarProducto(req.body);
+
+    if (detalles.length > 0) {
+      return res.status(400).json({
+        error: 'Los datos del producto no son válidos.',
+        details: detalles
+      });
+    }
+
+    const producto = {
+      id: siguienteId++,
+      name: req.body.name.trim(),
+      price: req.body.price,
+      category: req.body.category,
+      stock: req.body.stock
+    };
+
+    products.push(producto);
+
+    return res.status(201).json(producto);
+  });
+
+  app.put('/api/products/:id', (req, res) => {
+    const id = parseId(req.params.id);
+
+    if (id === null) {
+      return res.status(400).json({
+        error: 'Identificador inválido.',
+        details: ['El identificador debe contener únicamente números.']
+      });
+    }
+
+    const indice = products.findIndex((producto) => producto.id === id);
+
+    if (indice === -1) {
+      return res.status(404).json({
+        error: 'Producto no encontrado.',
+        details: [`No existe un producto con el identificador ${id}.`]
+      });
+    }
+
+    const { detalles } = validarProducto(req.body);
+
+    if (detalles.length > 0) {
+      return res.status(400).json({
+        error: 'Los datos del producto no son válidos.',
+        details: detalles
+      });
+    }
+
+    const productoActualizado = {
+      id,
+      name: req.body.name.trim(),
+      price: req.body.price,
+      category: req.body.category,
+      stock: req.body.stock
+    };
+
+    products[indice] = productoActualizado;
+
+    return res.status(200).json(productoActualizado);
+  });
+
+  app.delete('/api/products/:id', (req, res) => {
+    const id = parseId(req.params.id);
+
+    if (id === null) {
+      return res.status(400).json({
+        error: 'Identificador inválido.',
+        details: ['El identificador debe contener únicamente números.']
+      });
+    }
+
+    const indice = products.findIndex((producto) => producto.id === id);
+
+    if (indice === -1) {
+      return res.status(404).json({
+        error: 'Producto no encontrado.',
+        details: [`No existe un producto con el identificador ${id}.`]
+      });
+    }
+
+    products.splice(indice, 1);
+
+    return res.status(204).end();
+  });
+
+  app.use((req, res) => {
+    res.status(404).json({
+      error: 'Ruta no encontrada.',
+      details: [`${req.method} ${req.originalUrl}`]
+    });
+  });
+
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        error: 'El cuerpo no es un JSON válido.',
+        details: []
+      });
+    }
+
     console.error(err);
-    return res.status(500).json({ error: 'Error interno del servidor', details: [] });
+
+    return res.status(500).json({
+      error: 'Error interno del servidor.',
+      details: []
+    });
   });
 
   return app;

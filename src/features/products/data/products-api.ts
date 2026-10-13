@@ -38,40 +38,41 @@ export interface ProductQuery {
   search?: string;
   category?: string;
 }
-
-/** YA DADO (ejemplo): GET /api/products?search=&category= */
 export async function getProducts(query: ProductQuery = {}): Promise<Product[]> {
   const params = new URLSearchParams();
+
   if (query.search) params.set('search', query.search);
   if (query.category) params.set('category', query.category);
+
   const queryString = params.toString();
+
   return request<Product[]>(`/api/products${queryString ? `?${queryString}` : ''}`);
 }
-
-/** TODO(Parte 3): GET /api/products/:id — siga el patrón de `getProducts`. */
 export async function getProduct(id: number): Promise<Product> {
-  void id;
-  throw new ApiError('TODO(Parte 3): falta implementar getProduct.', null);
+  return request<Product>(`/api/products/${id}`);
 }
 
-/**
- * TODO(Parte 3): POST /api/products — cuerpo JSON con el producto.
- * Pista: request<Product>('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
- */
 export async function createProduct(input: ProductInput): Promise<Product> {
-  void input;
-  throw new ApiError('TODO(Parte 3): falta implementar createProduct.', null);
+  return request<Product>('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 }
 
-/** TODO(Parte 3): PUT /api/products/:id — igual que createProduct, con method 'PUT' y el id en la ruta. */
-export async function updateProduct(id: number, input: ProductInput): Promise<Product> {
-  void id;
-  void input;
-  throw new ApiError('TODO(Parte 3): falta implementar updateProduct.', null);
+export async function updateProduct(
+  id: number,
+  input: ProductInput,
+): Promise<Product> {
+  return request<Product>(`/api/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 }
 
-/** TODO(Parte 3): DELETE /api/products/:id — request<void>(`/api/products/${id}`, { method: 'DELETE' }) */
 export async function deleteProduct(id: number): Promise<void> {
-  void id;
-  throw new ApiError('TODO(Parte 3): falta implementar deleteProduct.', null);
+  return request<void>(`/api/products/${id}`, {
+    method: 'DELETE',
+  });
 }
