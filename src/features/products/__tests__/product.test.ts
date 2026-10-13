@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import seedProducts from '../../../../server/data/products.json';
-import { CATEGORIES, formatCOP, LOW_STOCK_THRESHOLD } from '../domain/product';
+import {
+  CATEGORIES,
+  filterProducts,
+  formatCOP,
+  LOW_STOCK_THRESHOLD,
+  toProductView,
+  validateProduct,
+  type Product,
+} from '../domain/product';
 
 /**
  * Pruebas unitarias de EJEMPLO (ya vienen dadas) para que `npm test` corra desde el inicio.
@@ -39,14 +47,68 @@ describe('formatCOP (ejemplo)', () => {
  * Mínimo dos de estas funciones del dominio: `validateProduct`, `toProductView` o `filterProducts`.
  * Quite el `.todo` cuando escriba el cuerpo de cada una.
  */
+
 describe('validateProduct', () => {
-  it.todo('rechaza un nombre vacío, un precio menor o igual que 0 y una categoría no permitida');
+  it('rechaza nombre vacío, precio inválido y categoría no permitida', () => {
+    const result = validateProduct({
+      name: '   ',
+      price: 0,
+      category: 'Electrónica',
+      stock: 2,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.name).toBeDefined();
+    expect(result.errors.price).toBeDefined();
+    expect(result.errors.category).toBeDefined();
+  });
+
+  it('acepta datos válidos', () => {
+    const result = validateProduct({
+      name: 'Agua mineral',
+      price: 2500,
+      category: 'Bebidas',
+      stock: 10,
+    });
+
+    expect(result).toEqual({ isValid: true, errors: {} });
+  });
 });
 
 describe('toProductView', () => {
-  it.todo('formatea el precio en pesos y marca «Agotado» y «Pocas unidades»');
+  it('formatea el precio y marca agotado y pocas unidades', () => {
+    const base: Product = {
+      id: 1,
+      name: '  Agua mineral  ',
+      price: 1250000,
+      category: 'Bebidas',
+      stock: 0,
+    };
+
+    const agotado = toProductView(base);
+    expect(agotado.name).toBe('Agua mineral');
+    expect(agotado.priceLabel).toBe('$ 1.250.000');
+    expect(agotado.stockLabel).toBe('Agotado');
+    expect(agotado.isOutOfStock).toBe(true);
+
+    const pocasUnidades = toProductView({ ...base, stock: 2 });
+    expect(pocasUnidades.stockLabel).toBe('Pocas unidades');
+    expect(pocasUnidades.isLowStock).toBe(true);
+  });
 });
 
 describe('filterProducts', () => {
-  it.todo('filtra por texto sin distinguir mayúsculas y por categoría exacta');
+  it('filtra por texto sin distinguir mayúsculas y por categoría exacta', () => {
+    const products = seedProducts as Product[];
+
+    expect(filterProducts(products, {
+      search: 'AGUA',
+      category: '',
+    }).map((product) => product.id)).toEqual([1]);
+
+    expect(filterProducts(products, {
+      search: '',
+      category: 'Snacks',
+    }).map((product) => product.id)).toEqual([4, 5]);
+  });
 });

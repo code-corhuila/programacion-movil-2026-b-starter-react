@@ -34,10 +34,39 @@ describe('API de productos (ejemplo)', () => {
  * TODO(Parte 5): agregue sus pruebas de la API aquí, con el mismo patrón. Mínimo dos, por ejemplo:
  * POST con datos inválidos → 400 con `details`, y GET de un id inexistente → 404.
  */
+
 describe('POST /api/products', () => {
-  it.todo('responde 400 con { error, details } cuando los datos no validan');
+  it('responde 400 con error y details cuando los datos no validan', async () => {
+    const response = await fetch(`${baseUrl}/api/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: '',
+        price: 0,
+        category: 'Electrónica',
+        stock: -1,
+      }),
+    });
+
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toEqual(expect.any(String));
+    expect(body.details).toEqual(expect.any(Array));
+    expect(body.details.length).toBeGreaterThan(0);
+  });
 });
 
 describe('GET /api/products/:id', () => {
-  it.todo('responde 404 cuando el producto no existe');
+  it('responde 404 cuando el producto no existe', async () => {
+    const response = await fetch(`${baseUrl}/api/products/9999`);
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      error: expect.any(String),
+      details: expect.any(Array),
+    });
+  });
 });
+

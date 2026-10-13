@@ -1,24 +1,42 @@
-// Ejercicio Kotlin · Parte 4 del TODO.md
-//
-// Alcance: solo lo visto en la semana 7 (val/var, funciones, clases, tipos que admiten null,
-// `?.`, `?:`, if/when, plantillas de cadena). No exige proyecto Android.
-// Cómo ejecutarlo: pegue el archivo en https://play.kotlinlang.org o compílelo con `kotlinc`.
 
-// TODO(Parte 4): defina la clase Product con id (Int), name (String), price (Double),
-// category (String) y un campo OPCIONAL: stock (Int?) que puede ser null.
-// Use `val` para lo que no cambia y `var` solo para lo que sí cambia.
+class Product(
+    val id: Int,
+    val name: String,
+    val price: Double,
+    val category: String,
+    val stock: Int?
+)
 
+fun stockLabel(stock: Int?): String {
+    if (stock == null) {
+        return "Sin dato"
+    }
 
-// TODO(Parte 4): stockLabel(stock: Int?): String
-//   null → "Sin dato" · 0 → "Agotado" · menos de 5 → "Pocas unidades" · otro caso → "Disponible"
-//   (use `?:`, `?.` o `if` para tratar el null).
+    return when {
+        stock == 0 -> "Agotado"
+        stock < 5 -> "Pocas unidades"
+        else -> "Disponible"
+    }
+}
 
-
-// TODO(Parte 4): applyDiscount(price: Double, percent: Int): Double
-//   Devuelve el precio con el descuento aplicado (p. ej. 10000.0 con 15 % → 8500.0).
-
+fun applyDiscount(price: Double, percent: Int): Double {
+    return price * (100 - percent) / 100
+}
 
 fun main() {
-    // TODO(Parte 4): cree 3 productos (uno con stock null y uno agotado) e imprima, por cada uno,
-    // su nombre, la etiqueta de stock y su precio con un 10 % de descuento.
+    val products = listOf(
+        Product(1, "Agua", 2500.0, "Bebidas", 12),
+        Product(2, "Galletas", 3500.0, "Snacks", 0),
+        Product(3, "Jabón", 4200.0, "Aseo", null)
+    )
+
+    for (product in products) {
+        val label = stockLabel(product.stock)
+        val discountedPrice = applyDiscount(product.price, 10)
+
+        println("Producto: ${product.name}")
+        println("Stock: $label")
+        println("Precio con 10% de descuento: $discountedPrice")
+        println("---")
+    }
 }

@@ -105,3 +105,14 @@ Al terminar, agregue aquí abajo las dos secciones escritas en inglés (3 a 5 fr
 ---
 
 Las plantillas de `docs/` provienen del Mobile Governance Framework (licencia MIT; ver `docs/LICENSE-mobile-governance-framework.txt`).
+<<<<<<< Updated upstream
+=======
+
+## State management decision
+
+The application uses React `useState` to manage screen-level state, such as products, search terms, category filters, loading status, and errors. This approach is simple and appropriate because each screen manages its own state without requiring a global store. React `useEffect` loads data from the API, while the list refreshes when the user returns to the screen. If the application grows and multiple screens need to share complex state, a centralized store or a dedicated data-fetching library could reduce duplication and simplify synchronization.
+
+## API error handling
+
+The client uses a shared `request` function and the `ApiError` class to distinguish unsuccessful HTTP responses from network failures. When the server returns an unsuccessful response, `ApiError` preserves the HTTP status, error message, and validation details; network failures are handled separately because no valid HTTP response is received. The Express API returns `400` for invalid input, `404` when a product or route does not exist, and `500` for unexpected server errors, using consistent JSON error responses. The interface displays readable error messages, shows validation details when available, and provides retry options where appropriate.
+>>>>>>> Stashed changes

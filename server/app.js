@@ -53,10 +53,6 @@ function createApp() {
   void CATEGORIES;
   void parseId;
 
-  const notImplemented = (_req, res) => {
-    res.status(501).json({ error: 'Not implemented' });
-  };
-
   // TODO(Parte 2): GET /api/products con filtros. Los parámetros llegan en `req.query`:
   //   const { search, category } = req.query;
   //   `search`: el nombre contiene el texto, sin distinguir mayúsculas (toLowerCase + includes).

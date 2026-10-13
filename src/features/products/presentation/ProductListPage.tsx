@@ -1,54 +1,47 @@
+
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
-  IonItem,
-  IonLabel,
-  IonList,
+  IonInput,
   IonPage,
   IonTitle,
   IonToolbar,
   useIonViewWillEnter,
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 
 import { getErrorMessage } from '../data/api-error';
 import { getProducts } from '../data/products-api';
-import type { Product } from '../domain/product';
+import {
+  CATEGORIES,
+  filterProducts,
+  toProductView,
+  type Product,
+} from '../domain/product';
 import EmptyState from './EmptyState';
+import ProductCard from './ProductCard';
 
-/**
- * Pantalla: lista de productos (ruta /productos).
- *
- * El código de abajo es un EJEMPLO MÍNIMO YA DADO de cómo se carga una lista:
- *  - `useState` guarda los productos, el estado de la carga y el mensaje de error;
- *  - `useEffect` con `[]` carga la lista UNA vez, al abrir la pantalla;
- *  - `useIonViewWillEnter` la recarga cuando la persona VUELVE a esta pantalla (Ionic mantiene la
- *    página en memoria, así que sin esto no se vería, por ejemplo, un producto recién creado);
- *  - `IonItem` + `IonLabel` pintan cada producto.
- *
- * TODO(Parte 3): completar la pantalla
- *  - un buscador por texto (`IonInput`) y un filtro por categoría con un `IonButton` por categoría
- *    («Todas» + CATEGORIES) y una variable de estado; filtrar con `filterProducts()`;
- *  - estado VACÍO (la API no tiene productos) y estado SIN RESULTADOS (los filtros no encuentran nada),
- *    ambos con `EmptyState`;
- *  - `ProductCard` por producto, en lugar de IonItem/IonLabel, usando `toProductView()`;
- *  - al tocar un producto, ir a /productos/:id (`useHistory`);
- *  - un botón para ir al formulario (/productos/nuevo).
- * Para ver el estado de error, detenga el servidor (`npm run server`).
- */
 type LoadStatus = 'loading' | 'ready' | 'error';
 
 const ProductListPage: React.FC = () => {
+  const history = useHistory();
   const [products, setProducts] = useState<Product[]>([]);
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('');
   const isLoadingRef = useRef(false);
 
   const loadProducts = useCallback(async () => {
-    if (isLoadingRef.current) return; // evita pedir la lista dos veces a la vez
+    if (isLoadingRef.current) return;
+
     isLoadingRef.current = true;
     setStatus('loading');
+    setErrorMessage('');
+
     try {
       setProducts(await getProducts());
       setStatus('ready');
@@ -68,15 +61,61 @@ const ProductListPage: React.FC = () => {
     void loadProducts();
   });
 
+  const filteredProducts = filterProducts(products, { search, category });
+
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
           <IonTitle>Productos</IonTitle>
+          <IonButtons slot="end">
+            <IonButton routerLink="/productos/nuevo">
+              Nuevo
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
+
       <IonContent>
-        {status === 'loading' && <p className="ion-padding">Cargando productos…</p>}
+        <div className="ion-padding">
+          <IonInput
+            label="Buscar productos"
+            labelPlacement="stacked"
+            placeholder="Escribe un nombre..."
+            value={search}
+            onIonInput={(event) => setSearch(event.detail.value ?? '')}
+            clearInput
+          />
+
+          <div className="ion-margin-top">
+            <p>Filtrar por categoría</p>
+            <IonButtons className="ion-flex-wrap">
+              <IonButton
+                fill={category === '' ? 'solid' : 'outline'}
+                onClick={() => setCategory('')}
+              >
+                Todas
+              </IonButton>
+
+              {CATEGORIES.map((item) => (
+                <IonButton
+                  key={item}
+                  fill={category === item ? 'solid' : 'outline'}
+                  onClick={() => setCategory(item)}
+                >
+                  {item}
+                </IonButton>
+              ))}
+            </IonButtons>
+          </div>
+        </div>
+
+        {status === 'loading' && (
+          <p className="ion-padding" role="status">
+            Cargando productos…
+          </p>
+        )}
+
         {status === 'error' && (
           <EmptyState
             title="No se pudo cargar"
@@ -85,18 +124,38 @@ const ProductListPage: React.FC = () => {
             onAction={() => void loadProducts()}
           />
         )}
-        {status === 'ready' && (
-          <IonList>
-            {products.map((product) => (
-              <IonItem key={product.id}>
-                <IonLabel>{product.name}</IonLabel>
-              </IonItem>
-            ))}
-          </IonList>
+
+        {status === 'ready' && products.length === 0 && (
+          <EmptyState
+            title="No hay productos"
+            message="Todavía no se han registrado productos."
+            actionLabel="Crear producto"
+            onAction={() => history.push('/productos/nuevo')}
+          />
         )}
-        <IonButton routerLink="/productos/nuevo" className="ion-margin">
-          Nuevo producto
-        </IonButton>
+
+        {status === 'ready' &&
+          products.length > 0 &&
+          filteredProducts.length === 0 && (
+            <EmptyState
+              title="Sin resultados"
+              message="No hay productos que coincidan con tu búsqueda o categoría."
+              actionLabel="Limpiar filtros"
+              onAction={() => {
+                setSearch('');
+                setCategory('');
+              }}
+            />
+          )}
+
+        {status === 'ready' &&
+          filteredProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={toProductView(product)}
+              onSelect={(id) => history.push(`/productos/${id}`)}
+            />
+          ))}
       </IonContent>
     </IonPage>
   );
