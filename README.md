@@ -2,7 +2,7 @@
 
 Parcial práctico del corte 2 · Programación Móvil · CORHUILA 2026-B (modalidad individual).
 
-Este repositorio es el punto de partida. El proyecto tiene tres piezas que se construyen durante el parcial, siguiendo el [Mobile Governance Framework](https://github.com/jesusarielgb-works/mobile-governance-framework):
+Este repositorio contiene la solución del parcial. El proyecto tiene tres piezas, construidas siguiendo el [Mobile Governance Framework](https://github.com/jesusarielgb-works/mobile-governance-framework):
 
 - **API Express** (`server/`): CRUD de productos con validación, filtros y manejo de errores.
 - **App Ionic React** (`src/`): lista con búsqueda y filtro, detalle, y formulario de crear y editar, organizada por capas.
@@ -27,9 +27,11 @@ npm run build      # revisión de tipos y compilación para producción
 
 La app y la API se ejecutan al mismo tiempo, cada una en su terminal. La app lee la dirección de la API de la variable `VITE_API_URL`: copie `.env.example` como `.env` si necesita cambiarla. El archivo `.env` está ignorado por Git; nunca se versiona.
 
-Rutas de la app, ya creadas como pantallas esqueleto: `/productos` (lista), `/productos/nuevo`, `/productos/:id` (detalle) y `/productos/:id/editar`.
+Rutas de la app: `/productos` (lista), `/productos/nuevo`, `/productos/:id` (detalle) y `/productos/:id/editar`.
 
-Hoy la API responde `501 Not implemented` en cada ruta de `/api/products`, y las pantallas muestran un `TODO`. Construir esa funcionalidad es el trabajo del parcial.
+Ejercicio Kotlin: pegue `kotlin/Product.kt` en el [Kotlin Playground](https://play.kotlinlang.org) y ejecútelo, o compílelo con `kotlinc kotlin/Product.kt -include-runtime -d product.jar` y corra `java -cp product.jar ProductKt`.
+
+`npm test` ejecuta las pruebas unitarias del dominio (`src/features/products/__tests__/`) y las pruebas de integración de la API con `supertest` (`server/__tests__/`).
 
 ## Flujo de entrega
 
@@ -71,22 +73,23 @@ Validación: `name` obligatorio (máximo 60 caracteres), `price` número mayor q
 ## Estructura
 
 ```text
-docs/                         plantillas del framework (se copian y se llenan)
+docs/                         documentación escrita antes del código (a partir de las plantillas del framework)
   features/ screens/ decisions/ api/ definition-of-done.md
-kotlin/Product.kt             ejercicio Kotlin (esqueleto)
+kotlin/Product.kt             ejercicio Kotlin: clase Product, stockLabel, applyDiscount y main
 server/
-  app.js                      createApp(): rutas de la API (stubs 501) + piezas ya dadas
+  app.js                      createApp(): cinco rutas de la API, validación y manejadores de errores
   index.js                    arranque en el puerto 3000
   data/products.json          8 productos semilla
+  __tests__/                  pruebas de integración de la API (Vitest + supertest)
 src/app/                      arranque, rutas y tema
 src/features/products/        funcionalidad organizada por capas del framework
   data/                       config.ts (API_URL), api-error.ts (ApiError), products-api.ts (cliente fetch)
   domain/product.ts           tipos, formatCOP (dado), validateProduct, toProductView, filterProducts
-  presentation/               páginas, EmptyState (dado, modelo de props tipadas) y ProductCard
-  __tests__/                  test-server.ts (helper dado), pruebas de ejemplo y espacio para las suyas
+  presentation/               páginas (lista, detalle, formulario), ProductCard, ProductForm y EmptyState
+  __tests__/                  test-server.ts (helper dado) y pruebas unitarias del dominio
 ```
 
-Capas (framework, `01-architecture/layers-and-state`): `presentation` depende de `domain` y de `data`; `data` depende de `domain`; `domain` no depende de nada. El estado de cada pantalla puede vivir en la misma página con `useState` y `useEffect`.
+Capas (framework, `01-architecture/layers-and-state`): `presentation` depende de `domain` y de `data`; `data` depende de `domain`; `domain` no depende de nada. El estado de cada pantalla vive en la misma página con `useState` y `useEffect`.
 
 ## Qué ya viene resuelto
 
@@ -98,10 +101,17 @@ Para concentrar el parcial en lo trabajado en clase, algunas piezas vienen hecha
 - **Presentación:** `EmptyState` como modelo de componente con props tipadas; el esqueleto de la lista (carga con `useEffect` e `IonItem`/`IonLabel`) y el campo `IonInput` del formulario.
 - **Pruebas:** el helper `startTestServer()` y un ejemplo de prueba de la API.
 
-## Entrega: secciones de este README
+---
 
-Al terminar, agregue aquí abajo las dos secciones escritas en inglés (3 a 5 frases cada una) que indica la Parte 7 de [TODO.md](./TODO.md): **State management decision** y **API error handling**. También actualice este README con cualquier paso adicional necesario para ejecutar su versión.
+Las plantillas de `docs/` provienen del Mobile Governance Framework (licencia MIT; ver `docs/LICENSE-mobile-governance-framework.txt`).
 
+## State management decision
+
+Each screen in the Ionic React app keeps its own state with `useState` and loads its data with `useEffect`, so there is no global store. This fits the project because the API is the single source of truth: every screen fetches what it needs when it opens, and `useIonViewWillEnter` reloads it when the user comes back, which is necessary because Ionic keeps pages mounted in memory. Loading is modeled as one `status` variable (`'loading' | 'ready' | 'error'`), and the visible list is derived with `filterProducts` instead of being stored twice, so the screen cannot end up in impossible or out-of-sync states. If the application grew, I would first extract a custom hook per feature, such as `useProducts`, and then adopt a data-fetching library like TanStack Query for caching and invalidation.
+
+## API error handling
+
+Every error from the Express API uses the same JSON body, `{ error, details }`, where `error` is a short message and `details` lists one message per problem, such as each invalid field. Route handlers return 400 for a non-numeric id or an invalid body and 404 for a missing product, while the provided middleware returns 404 for unknown routes and a central error handler returns 500 for unexpected failures (and 400 for malformed JSON). On the client, the `request` helper tells two failures apart: if `fetch` throws, the server was unreachable and it throws an `ApiError` with `status` set to `null`, but if the response is not `ok`, it reads the body and throws an `ApiError` with the HTTP status and the `details`. Screens catch the `ApiError` and turn it into a readable message with `getErrorMessage`, so the user sees "could not connect", "product not found" or the server's own message instead of a raw status code. The form also lists each entry of `details` under the fields, and the list and detail screens offer a Retry button.
 ---
 
 Las plantillas de `docs/` provienen del Mobile Governance Framework (licencia MIT; ver `docs/LICENSE-mobile-governance-framework.txt`).
